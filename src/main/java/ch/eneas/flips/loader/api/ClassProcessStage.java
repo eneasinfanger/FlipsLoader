@@ -1,8 +1,8 @@
-package ch.eneas.flips.loader.internal;
+package ch.eneas.flips.loader.api;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
-interface ClassProcessStage<T> {
+public interface ClassProcessStage<T> {
     String getStageDescriptor();
 
     boolean matchesClass(Class<?> clazz);

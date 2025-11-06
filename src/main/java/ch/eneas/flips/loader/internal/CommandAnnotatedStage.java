@@ -1,5 +1,6 @@
 package ch.eneas.flips.loader.internal;
 
+import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.RegisterCommand;
 
 import static ch.eneas.flips.loader.internal.RefUtil.unwrapCause;

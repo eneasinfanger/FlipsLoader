@@ -1,5 +1,6 @@
 package ch.eneas.flips.loader.internal;
 
+import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.FlipsLoader;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
@@ -12,7 +13,6 @@ import java.lang.reflect.Method;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.Arrays;
-import java.util.Set;
 
 import static ch.eneas.flips.loader.internal.RefUtil.unwrapCause;
 
@@ -65,7 +65,9 @@ public class FlipsLoaderDelegate implements FlipsLoader {
         try {
             // First the method of the base class is obtained to get IDE integration if method signature is changed.
             // (The IDE doesn't recognize the method name if it's used directly on getClass())
-            implRegisterPluginClasses = getImplMethod(loaderImpl.getClass(), FlipsLoaderImpl.class.getMethod("registerPluginClasses", JavaPlugin.class));
+            implRegisterPluginClasses = getImplMethod(loaderImpl.getClass(),
+                FlipsLoaderImpl.class.getMethod("registerPluginClasses", JavaPlugin.class, ClassProcessStage[].class)
+            );
         } catch (PrivilegedActionException | ReflectiveOperationException ex) {
             throw new IllegalStateException("Failed to load LOADER class!", unwrapCause(ex));
         }
@@ -73,9 +75,9 @@ public class FlipsLoaderDelegate implements FlipsLoader {
     }
 
     @Override
-    public void registerPluginClasses(JavaPlugin plugin) {
+    public void registerPluginClasses(JavaPlugin plugin, ClassProcessStage<?>[] customStages) {
         try {
-            implRegisterPluginClasses.invoke(loaderImpl, plugin);
+            implRegisterPluginClasses.invoke(loaderImpl, plugin, customStages);
         } catch (IllegalAccessException | InvocationTargetException e) {
             var cause = unwrapCause(e);
             throw new IllegalStateException("Unexpected behaviour from FlipsLoader implementation: " + cause, cause);

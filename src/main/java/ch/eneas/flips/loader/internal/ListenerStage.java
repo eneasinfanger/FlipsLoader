@@ -1,5 +1,6 @@
 package ch.eneas.flips.loader.internal;
 
+import ch.eneas.flips.loader.api.ClassProcessStage;
 import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;
 

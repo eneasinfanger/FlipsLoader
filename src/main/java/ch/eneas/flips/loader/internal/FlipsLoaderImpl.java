@@ -1,8 +1,9 @@
 package ch.eneas.flips.loader.internal;
 
+import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.FlipsLoader;
 import ch.eneas.flips.loader.api.Service;
-import ch.eneas.flips.loader.internal.ClassProcessStage.ClassProcessInfo;
+import ch.eneas.flips.loader.api.ClassProcessStage.ClassProcessInfo;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
@@ -11,12 +12,13 @@ import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @ApiStatus.Internal
 public final class FlipsLoaderImpl extends JavaPlugin implements FlipsLoader {
     private final Map<Service, JavaPlugin> services = new HashMap<>();
     private final Logger logger = getSLF4JLogger();
-    private final List<ClassProcessStage<?>> stages = Arrays.asList(
+    private final List<ClassProcessStage<?>> standardStages = Arrays.asList(
         new CommandRegisterStage(),
         new CommandAnnotatedStage<>(),
         new ServiceStage(services),
@@ -24,11 +26,13 @@ public final class FlipsLoaderImpl extends JavaPlugin implements FlipsLoader {
     );
 
     @Override
-    public void registerPluginClasses(JavaPlugin plugin) {
+    public void registerPluginClasses(JavaPlugin plugin, ClassProcessStage<?>[] customStages) {
         Set<Class<?>> classes = getClasses(plugin)
             .stream()
             .filter(cls -> !cls.isInterface() && !Modifier.isAbstract(cls.getModifiers()))
             .collect(Collectors.toSet());
+
+        List<ClassProcessStage<?>> stages = Stream.concat(standardStages.stream(), Arrays.stream(customStages)).toList();
 
         Map<ClassProcessStage<?>, List<Class<?>>> matchingClasses = stages.parallelStream()
             .collect(Collectors.toMap(stage -> stage, stage -> new ArrayList<>()));

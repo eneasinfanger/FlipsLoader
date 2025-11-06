@@ -1,8 +1,7 @@
 package ch.eneas.flips.loader.internal;
 
+import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.CommandRegister;
-
-import static ch.eneas.flips.loader.internal.FlipsLoaderDelegate.getLogger;
 
 class CommandRegisterStage implements ClassProcessStage<CommandRegister> {
     @Override
