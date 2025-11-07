@@ -58,17 +58,25 @@ class Instantiator {
     }
 
     private static Constructor<?> getConstructor(Class<?> clazz, Bit isNested, Class<? extends JavaPlugin> srcPluginClass) throws NewInstanceFailedException {
-        final Constructor<?>[] cons = clazz.getDeclaredConstructors();
-        if (cons.length > 1) {
-            throw new NewInstanceFailedException(clazz + " must only have ONE constructor", null);
-        }
-        final Constructor<?> con = cons[0];
+        final Constructor<?> con = getNoArgConstructor(clazz);
         final int conParams = con.getParameterCount() - isNested.asInt; // first parameter of non-static nested classes is always declaring class
 
         if (conParams > 1 || (conParams == 1 && !con.getParameterTypes()[isNested.asInt].isAssignableFrom(srcPluginClass))) {
             throw new NewInstanceFailedException(clazz + " must have an accessible no-arg constructor or constructor with your plugin as only argument", null);
         }
         return con;
+    }
+
+    private static Constructor<?> getNoArgConstructor(Class<?> clazz) {
+        final Constructor<?>[] cons = clazz.getDeclaredConstructors();
+        if (cons.length > 1) {
+            try {
+                return clazz.getDeclaredConstructor();
+            } catch (NoSuchMethodException e) {
+                throw new NewInstanceFailedException(clazz + " must have an accessible no-arg constructor or constructor with your plugin as only argument", e);
+            }
+        }
+        return cons[0];
     }
 
     static class NewInstanceFailedException extends RuntimeException {
