@@ -31,6 +31,11 @@ class Instantiator {
         return (T) instance;
     }
 
+    @SuppressWarnings("unchecked")
+    static <T>T getCachedInstance(Class<T> clazz) {
+        return (T) instances.get(clazz);
+    }
+
     private static Object createInstance(Class<?> clazz, JavaPlugin srcPlugin) throws NewInstanceFailedException {
         try {
             final Bit isNestedClass = Bit.of(clazz.isMemberClass() && !Modifier.isStatic(clazz.getModifiers()));

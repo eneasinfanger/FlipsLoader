@@ -27,6 +27,11 @@ public final class FlipsLoaderImpl extends JavaPlugin implements FlipsLoader {
 
     @Override
     public void registerPluginClasses(JavaPlugin plugin, ClassProcessStage<?>[] customStages) {
+        registerPluginClassesDelayed(plugin, customStages).init();
+    }
+
+    @Override
+    public DelayedInit registerPluginClassesDelayed(JavaPlugin plugin, ClassProcessStage<?>... customStages) {
         Set<Class<?>> classes = getClasses(plugin)
             .stream()
             .filter(cls -> !cls.isInterface() && !Modifier.isAbstract(cls.getModifiers()))
@@ -49,7 +54,7 @@ public final class FlipsLoaderImpl extends JavaPlugin implements FlipsLoader {
             .distinct()
             .collect(Collectors.toMap(clazz -> clazz, clazz -> createClassProcessInfo(plugin, clazz, normalizedPluginName)));
 
-        stages.forEach(stage -> matchingClasses.get(stage).forEach(clazz -> {
+        return () -> stages.forEach(stage -> matchingClasses.get(stage).forEach(clazz -> {
             try {
                 //noinspection unchecked,rawtypes
                 stage.processClass((ClassProcessInfo) processInfos.get(clazz));

@@ -13,6 +13,7 @@ import java.lang.reflect.Method;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.Arrays;
+import java.util.Optional;
 
 import static ch.eneas.flips.loader.internal.RefUtil.unwrapCause;
 
@@ -47,8 +48,19 @@ public class FlipsLoaderDelegate implements FlipsLoader {
         });
     }
 
+    @SuppressWarnings("unchecked")
+    private static <T>T runImplMethod(Method implMethod, Object impl, Object... args) {
+        try {
+            return (T) implMethod.invoke(impl, args);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            var cause = unwrapCause(e);
+            throw new IllegalStateException("Unexpected behaviour from FlipsLoader implementation: " + cause, cause);
+        }
+    }
+
     private final Object loaderImpl;
     private final Method implRegisterPluginClasses;
+    private final Method implRegisterPluginClassesDelayed;
     private final Logger logger;
 
     private FlipsLoaderDelegate() {
@@ -68,6 +80,9 @@ public class FlipsLoaderDelegate implements FlipsLoader {
             implRegisterPluginClasses = getImplMethod(loaderImpl.getClass(),
                 FlipsLoaderImpl.class.getMethod("registerPluginClasses", JavaPlugin.class, ClassProcessStage[].class)
             );
+            implRegisterPluginClassesDelayed = getImplMethod(loaderImpl.getClass(),
+                FlipsLoaderImpl.class.getMethod("registerPluginClassesDelayed", JavaPlugin.class, ClassProcessStage[].class)
+            );
         } catch (PrivilegedActionException | ReflectiveOperationException ex) {
             throw new IllegalStateException("Failed to load LOADER class!", unwrapCause(ex));
         }
@@ -76,11 +91,16 @@ public class FlipsLoaderDelegate implements FlipsLoader {
 
     @Override
     public void registerPluginClasses(JavaPlugin plugin, ClassProcessStage<?>[] customStages) {
-        try {
-            implRegisterPluginClasses.invoke(loaderImpl, plugin, customStages);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            var cause = unwrapCause(e);
-            throw new IllegalStateException("Unexpected behaviour from FlipsLoader implementation: " + cause, cause);
-        }
+        runImplMethod(implRegisterPluginClasses, loaderImpl, plugin, customStages);
+    }
+
+    @Override
+    public DelayedInit registerPluginClassesDelayed(JavaPlugin plugin, ClassProcessStage<?>... customStages) {
+        return runImplMethod(implRegisterPluginClassesDelayed, loaderImpl, plugin, customStages);
+    }
+
+    public <T> T getRegisteredInstance(Class<T> clazz) {
+        return Optional.ofNullable(Instantiator.getCachedInstance(clazz))
+            .orElseThrow(() -> new IllegalStateException("No registered instance for " + clazz.getName() + " found!"));
     }
 }
