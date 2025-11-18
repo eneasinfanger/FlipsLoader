@@ -1,10 +1,12 @@
 package ch.eneas.flips.loader.internal;
 
-import ch.eneas.flips.loader.api.*;
+import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.ClassProcessStage.ClassProcessInfo;
+import ch.eneas.flips.loader.api.CommandRegister;
+import ch.eneas.flips.loader.api.Service;
+import ch.eneas.flips.loader.api.SimpleClassProcessStage;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -15,7 +17,6 @@ import static ch.eneas.flips.loader.internal.RefUtil.unwrapCause;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
-@Slf4j
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 class DefaultClassProcessStages {
     private static final String COMMAND_CLASS_SUFFIX = "$Command";
@@ -86,7 +87,8 @@ class DefaultClassProcessStages {
                 service.startup(plugin);
                 adder.accept(service);
             } catch (Exception startupException) {
-                log.error("Failed to start service '{}' of plugin '{}'", service, plugin, startupException);
+                LoaderLoggerFactory.getProcessLogger(info.getSourcePlugin(), "service processor")
+                    .error("Failed to start service '{}' of plugin '{}'", service, plugin, startupException);
             }
         };
 

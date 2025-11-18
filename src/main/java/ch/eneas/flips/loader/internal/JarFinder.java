@@ -1,8 +1,8 @@
 package ch.eneas.flips.loader.internal;
 
-import lombok.extern.slf4j.Slf4j;
-import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.PluginClassLoader;
+import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -12,11 +12,20 @@ import java.lang.reflect.InaccessibleObjectException;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 
-@Slf4j
 class JarFinder {
     private static final Field pluginClassLoaderJarField;
 
+    private final JavaPlugin plugin;
+    private final Logger log;
+
+    JarFinder(JavaPlugin plugin) {
+        this.plugin = plugin;
+        this.log = LoaderLoggerFactory.getProcessLogger(plugin, getClass());
+    }
+
     static {
+        final Logger log = LoaderLoggerFactory.getLoaderLogger(JarFinder.class);
+
         Field field = null;
         try {
             //noinspection UnstableApiUsage
@@ -36,19 +45,17 @@ class JarFinder {
         pluginClassLoaderJarField = field;
     }
 
-    record JarInfo(JarFile file, boolean shouldClose) {}
-
-    static JarInfo getPluginJar(Plugin plugin) throws IOException {
+    JarInfo getPluginJar() throws IOException {
         JarFile pluginJar;
-        if (pluginClassLoaderJarField != null && (pluginJar = getFromClassLoader(plugin)) != null) {
+        if (pluginClassLoaderJarField != null && (pluginJar = getFromClassLoader()) != null) {
             return new JarInfo(pluginJar, false);
         }
-        var jar = new JarInfo(new JarFile(findPluginJar(plugin)), true);
+        var jar = new JarInfo(new JarFile(findPluginJar()), true);
         log.warn("Had to obtain plugin '{}' classes via the file in server plugins folder", plugin);
         return jar;
     }
 
-    private static JarFile getFromClassLoader(Plugin plugin) {
+    private JarFile getFromClassLoader() {
         //noinspection UnstableApiUsage
         if (plugin.getClass().getClassLoader() instanceof PluginClassLoader plCl) {
             try {
@@ -60,7 +67,7 @@ class JarFinder {
         return null;
     }
 
-    private static File findPluginJar(Plugin plugin) throws FileNotFoundException {
+    private File findPluginJar() throws FileNotFoundException {
         //noinspection UnstableApiUsage
         var pluginNamePattern = Pattern.compile("%s(-%s)?\\.jar".formatted(Pattern.quote(plugin.getPluginMeta().getName()), Pattern.quote(plugin.getPluginMeta().getVersion())));
         //noinspection DataFlowIssue
@@ -71,4 +78,6 @@ class JarFinder {
         }
         throw new FileNotFoundException("Could not find plugin jar file");
     }
+
+    record JarInfo(JarFile file, boolean shouldClose) {}
 }

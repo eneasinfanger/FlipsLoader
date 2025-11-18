@@ -1,7 +1,7 @@
 package ch.eneas.flips.loader.internal;
 
 import ch.eneas.flips.loader.internal.JarFinder.JarInfo;
-import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
 import java.util.Enumeration;
@@ -13,8 +13,8 @@ import java.util.jar.JarFile;
 class ClassCollector {
     private ClassCollector() {}
 
-    public static Set<Class<?>> collectPluginClasses(Plugin plugin) throws IOException, ClassNotFoundException {
-        JarInfo jar = JarFinder.getPluginJar(plugin);
+    public static Set<Class<?>> collectPluginClasses(JavaPlugin plugin) throws IOException, ClassNotFoundException {
+        JarInfo jar = new JarFinder(plugin).getPluginJar();
         try {
             return loadJarClasses(plugin, jar.file());
         } finally {
@@ -24,7 +24,7 @@ class ClassCollector {
         }
     }
 
-    private static Set<Class<?>> loadJarClasses(Plugin plugin, JarFile jarFile) throws ClassNotFoundException {
+    private static Set<Class<?>> loadJarClasses(JavaPlugin plugin, JarFile jarFile) throws ClassNotFoundException {
         var classes = new HashSet<Class<?>>();
         ClassLoader pluginClassLoader = plugin.getClass().getClassLoader();
         Enumeration<JarEntry> entries = jarFile.entries();
