@@ -3,14 +3,16 @@ package ch.eneas.flips.loader.api;
 import ch.eneas.flips.loader.internal.FlipsLoaderImpl;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.function.Consumer;
+
 public interface FlipsLoader {
     /**
-     * Shortcut for {@link #getLoader()}{@code .}{@link #initPluginClasses(JavaPlugin, ClassProcessStage[])}
+     * Shortcut for {@link #getLoader()}{@code .}{@link #initPluginClasses(JavaPlugin, Consumer)}
      *
-     * @see #initPluginClasses(JavaPlugin, ClassProcessStage[])
+     * @see #initPluginClasses(JavaPlugin, Consumer)
      */
-    static void initPlugin(JavaPlugin plugin, ClassProcessStage<?>... customStages) {
-        getLoader().initPluginClasses(plugin, customStages);
+    static void initPlugin(JavaPlugin plugin) {
+        getLoader().initPluginClasses(plugin, null);
     }
 
     /**
@@ -36,16 +38,15 @@ public interface FlipsLoader {
      * {@link org.bukkit.event.Listener Listener}, classes annotated with {@link dev.jorel.commandapi.annotations.Command @Command}
      * and any classes matched by custom process stages.
      *
-     * @param plugin       Plugin instance whose classes shall be searched.
-     * @param customStages Custom instances of {@link ClassProcessStage} for discovering other classes than described above
-     *                     and evaluating custom initialization logic.
+     * @param plugin Plugin instance whose classes shall be searched.
+     * @param configurator Custom config configurator for this plugin initialisation or {@code null} for the default config.
      * @throws RuntimeException if discovering or loading classes goes wrong or any otherwise critical error occurs.
      */
-    void initPluginClasses(JavaPlugin plugin, ClassProcessStage<?>... customStages);
+    void initPluginClasses(JavaPlugin plugin, Consumer<FlipsLoaderConfig> configurator);
 
     /**
      * <p>
-     * Everything described as in {@link #initPluginClasses(JavaPlugin, ClassProcessStage[])} but just loads the classes
+     * Everything described as in {@link #initPluginClasses(JavaPlugin, Consumer<FlipsLoaderConfig>)} but just loads the classes
      * and creates the instances, but waits with the initialization until {@link DelayedInit#run()} is called.
      * </p><p>
      * Even if the resulting trigger is discarded or the {@code init} method is never called (which will result
@@ -53,13 +54,12 @@ public interface FlipsLoader {
      * and calling a second initialization on this plugin will throw an exception.
      * </p>
      *
-     * @param plugin       Plugin instance whose classes shall be searched.
-     * @param customStages Custom instances of {@link ClassProcessStage} for discovering other classes than described above
-     *                     and evaluating custom initialization logic.
+     * @param plugin Plugin instance whose classes shall be searched.
+     * @param configurator Custom config configurator for this plugin initialisation or {@code null} for the default config.
      * @return A "trigger" for actually initializing the found classes.
      * @throws RuntimeException if discovering or loading classes goes wrong or any otherwise critical error occurs.
      */
-    DelayedInit initPluginClassesDelayed(JavaPlugin plugin, ClassProcessStage<?>... customStages);
+    DelayedInit initPluginClassesDelayed(JavaPlugin plugin, Consumer<FlipsLoaderConfig> configurator);
 
     /**
      * Shuts down all services. (maybe does more stuff like unregister something in the future)
@@ -107,14 +107,14 @@ public interface FlipsLoader {
     /**
      * Trigger for delayed initialization of discovered classes.
      *
-     * @see #initPluginClassesDelayed(JavaPlugin, ClassProcessStage[])
+     * @see #initPluginClassesDelayed(JavaPlugin, Consumer)
      */
     @FunctionalInterface
     interface DelayedInit {
         /**
          * Initialize the classes and trigger the startup / command registration / custom logic.
          *
-         * @see #initPluginClasses(JavaPlugin, ClassProcessStage[])
+         * @see #initPluginClasses(JavaPlugin, Consumer)
          */
         void run();
     }

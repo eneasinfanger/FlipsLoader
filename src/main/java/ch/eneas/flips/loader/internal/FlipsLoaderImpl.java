@@ -1,18 +1,16 @@
 package ch.eneas.flips.loader.internal;
 
-import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.FlipsLoader;
+import ch.eneas.flips.loader.api.FlipsLoaderConfig;
 import com.google.common.base.Preconditions;
-import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPIBukkitConfig;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class FlipsLoaderImpl implements FlipsLoader {
@@ -22,23 +20,23 @@ public class FlipsLoaderImpl implements FlipsLoader {
     private final Map<JavaPlugin, PluginInitializer> initializers = new HashMap<>();
 
     @Override
-    public void initPluginClasses(JavaPlugin plugin, ClassProcessStage<?>... customStages) {
-        initPluginClassesDelayed(plugin, customStages).run();
+    public void initPluginClasses(JavaPlugin plugin, Consumer<FlipsLoaderConfig> configurator) {
+        initPluginClassesDelayed(plugin, configurator).run();
     }
 
     @Override
-    public DelayedInit initPluginClassesDelayed(JavaPlugin plugin, ClassProcessStage<?>... customStages) {
+    public DelayedInit initPluginClassesDelayed(JavaPlugin plugin, Consumer<FlipsLoaderConfig> configurator) {
         if (initializers.containsKey(plugin)) {
             throw new IllegalStateException("plugin already initialized!");
         }
 
-        // TODO only do if enabled in config
-        CommandAPI.onLoad(new CommandAPIBukkitConfig(plugin)
-            .usePluginNamespace()
-            .silentLogs(true));
-        CommandAPI.onEnable();
+        var config = new InternalLoaderConfig();
+        if (configurator != null) {
+            configurator.accept(config);
+        }
+        config.seal(plugin);
 
-        var initializer = new PluginInitializer(plugin, List.of(customStages));
+        var initializer = new PluginInitializer(config);
         initializers.put(plugin, initializer);
         return initializer.initClasses();
     }
@@ -47,9 +45,6 @@ public class FlipsLoaderImpl implements FlipsLoader {
     public void deinitPluginClasses(JavaPlugin plugin) {
         var initializer = validate(initializers.remove(plugin), "plugin not initialized / already deinitialized!");
         initializer.deinitClasses();
-
-        // TODO only do if enabled in config
-        CommandAPI.onDisable();
     }
 
     @Override

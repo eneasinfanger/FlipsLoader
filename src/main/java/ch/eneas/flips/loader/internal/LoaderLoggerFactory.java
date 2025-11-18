@@ -2,10 +2,9 @@ package ch.eneas.flips.loader.internal;
 
 import ch.eneas.flips.libs.logging.LazyLogger;
 import ch.eneas.flips.libs.logging.LogUtils;
+import ch.eneas.flips.loader.api.FlipsLoaderConfig;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,9 +12,6 @@ import org.slf4j.LoggerFactory;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 final class LoaderLoggerFactory {
     private static final String FL = "FlipsLoader/";
-    @Getter
-    @Setter
-    private static boolean debug = false; // TODO determine from config
 
     public static Logger getLoaderLogger(Class<?> you) {
         return new LazyLogger(() -> LoggerFactory.getLogger(FL + you.getSimpleName()));
@@ -29,8 +25,8 @@ final class LoaderLoggerFactory {
         return LogUtils.subLogger(processingPlugin, FL + name);
     }
 
-    public static void debug(Logger logger, String message, Object... params) {
-        if (debug) {
+    public static void debug(InternalLoaderConfig config, Logger logger, String message, Object... params) {
+        if (config.debugLoader()) {
             // using INFO-Level and not DEBUG, because paper never shows DEBUG logs
             logger.info(message, params);
         }

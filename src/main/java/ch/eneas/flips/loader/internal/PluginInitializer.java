@@ -2,6 +2,9 @@ package ch.eneas.flips.loader.internal;
 
 import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.Service;
+import com.google.common.collect.ImmutableList;
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIBukkitConfig;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.slf4j.Logger;
 
@@ -19,61 +22,83 @@ import static ch.eneas.flips.loader.internal.DefaultClassProcessStages.*;
 import static ch.eneas.flips.loader.internal.LoaderLoggerFactory.debug;
 
 class PluginInitializer {
-    private final JavaPlugin plugin;
     private final Logger log;
-    private final List<ClassProcessStage<?>> processStages = new ArrayList<>();
+    private final InternalLoaderConfig config;
     private final Instantiator instantiator = new Instantiator();
     private final List<Service> services = new ArrayList<>();
 
-    PluginInitializer(JavaPlugin plugin, List<ClassProcessStage<?>> customStages) {
-        this.plugin = plugin;
-        this.log = LoaderLoggerFactory.getProcessLogger(plugin, getClass());
-        processStages.add(commandRegisterStage());
-        processStages.add(annotatedCommandStage());
-        processStages.add(serviceStage(services::add));
-        processStages.add(listenerStage());
-        processStages.addAll(customStages);
+    PluginInitializer(InternalLoaderConfig config) {
+        this.config = config;
+        this.log = LoaderLoggerFactory.getProcessLogger(config.plugin(), getClass());
     }
 
     public DelayedInit initClasses() {
-        Set<Class<?>> classes = getClasses(plugin)
+        initCommandAPI();
+
+        Set<Class<?>> classes = getClasses(config.plugin())
             .stream()
             .filter(cls -> !cls.isInterface() && !Modifier.isAbstract(cls.getModifiers()))
             .collect(Collectors.toSet());
-        debug(log, "Found {} (non-abstract) classes in plugin {}", classes.size(), plugin);
-        debug(log, "Using stages: {}", processStages);
+        debug(config, log, "Found {} (non-abstract) classes in plugin {}", classes.size(), config.plugin());
+
+        final List<ClassProcessStage<?>> processStages = arrangeProcessStages();
+        debug(config, log, "Using stages: {}", processStages);
+
         Map<ClassProcessStage<?>, List<Class<?>>> matchingClasses = processStages.parallelStream()
             .collect(Collectors.toMap(stage -> stage, stage -> new ArrayList<>()));
 
         classes.parallelStream().forEach(clazz -> {
-            if (!clazz.getPackageName().startsWith("ch.eneas")) { // TODO replace with actual config
+            if (config.searchPackages().stream().noneMatch(pkg -> clazz.getPackageName().startsWith(pkg))) {
                 return;
             }
             processStages.forEach(stage -> {
                 if (stage.matchesClass(clazz)) {
-                    debug(log, "Found {} matching {}.", clazz.getName(), stage.getStageDescriptor());
+                    debug(config, log, "Found {} matching {}.", clazz.getName(), stage.getStageDescriptor());
                     matchingClasses.get(stage).add(clazz);
                 }
             });
         });
 
-        instantiator.addInstance(plugin);
+        instantiator.addInstance(config.plugin());
 
-        String normalizedPluginName = plugin.getName().strip().toLowerCase().replace(' ', '_');
+        String normalizedPluginName = config.plugin().getName().strip().toLowerCase().replace(' ', '_');
         var processInfos = matchingClasses.values().parallelStream()
             .flatMap(List::stream)
             .distinct()
-            .collect(Collectors.toMap(clazz -> clazz, clazz -> createClassProcessInfo(plugin, clazz, normalizedPluginName)));
+            .collect(Collectors.toMap(clazz -> clazz, clazz -> createClassProcessInfo(clazz, normalizedPluginName)));
 
         return () -> processStages.forEach(stage -> matchingClasses.get(stage).forEach(clazz -> {
             try {
-                debug(log, "Processing {} {}", stage.getStageDescriptor(), clazz.getName());
+                debug(config, log, "Processing {} {}", stage.getStageDescriptor(), clazz.getName());
                 //noinspection unchecked,rawtypes
                 stage.processClass((ClassProcessInfo) processInfos.get(clazz));
             } catch (Exception e) {
-                log.error("Error in {} stage while processing {} of plugin {}", stage.getStageDescriptor(), clazz, plugin, e);
+                log.error("Error in {} stage while processing {} of plugin {}", stage.getStageDescriptor(), clazz, config.plugin(), e);
             }
         }));
+    }
+
+    private void initCommandAPI() {
+        if (!config.initCommandAPI()) {
+            return;
+        }
+        var cmdConfig = new CommandAPIBukkitConfig(config.plugin())
+            .usePluginNamespace()
+            .silentLogs(true);
+        config.commandAPICustomizer().accept(cmdConfig);
+
+        CommandAPI.onLoad(cmdConfig);
+        CommandAPI.onEnable();
+    }
+
+    private List<ClassProcessStage<?>> arrangeProcessStages() {
+        return ImmutableList.<ClassProcessStage<?>>builder()
+            .add(commandRegisterStage())
+            .add(annotatedCommandStage())
+            .add(serviceStage(services::add))
+            .add(listenerStage())
+            .addAll(config.customProcessStages())
+            .build();
     }
 
     private static Set<Class<?>> getClasses(JavaPlugin plugin) {
@@ -87,16 +112,19 @@ class PluginInitializer {
     public void deinitClasses() {
         for (Service service : services) {
             try {
-                service.shutdown(plugin);
+                service.shutdown(config.plugin());
             } catch (Exception e) {
-                log.error("Failed to shutdown service '{}' from plugin '{}'", service, plugin, e);
+                log.error("Failed to shutdown service '{}' from plugin '{}'", service, config.plugin(), e);
             }
+        }
+        if (config.initCommandAPI()) {
+            CommandAPI.onDisable();
         }
     }
 
-    private <T> ClassProcessStage.ClassProcessInfo<T> createClassProcessInfo(JavaPlugin plugin, Class<T> clazz, String normalizedPluginName) {
+    private <T> ClassProcessStage.ClassProcessInfo<T> createClassProcessInfo(Class<T> clazz, String normalizedPluginName) {
         return new ClassProcessStage.ClassProcessInfo<>() {
-            final T instance = instantiator.getInstance(clazz, plugin);
+            final T instance = instantiator.getInstance(clazz, config.plugin());
 
             @Override
             public T getProcessInstance() {
@@ -110,7 +138,7 @@ class PluginInitializer {
 
             @Override
             public JavaPlugin getSourcePlugin() {
-                return plugin;
+                return config.plugin();
             }
 
             @Override
