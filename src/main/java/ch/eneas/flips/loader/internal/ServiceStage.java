@@ -3,15 +3,15 @@ package ch.eneas.flips.loader.internal;
 import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.Service;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.Map;
+import java.util.function.Consumer;
 
-import static ch.eneas.flips.loader.internal.FlipsLoaderDelegate.getLogger;
-
+@Slf4j
 @RequiredArgsConstructor
 public class ServiceStage implements ClassProcessStage<Service> {
-    private final Map<Service, JavaPlugin> services;
+    private final Consumer<Service> services;
 
     @Override
     public String getStageDescriptor() {
@@ -29,9 +29,9 @@ public class ServiceStage implements ClassProcessStage<Service> {
         JavaPlugin plugin = info.getSourcePlugin();
         try {
             service.startup(plugin);
-            services.put(service, plugin);
+            services.accept(service);
         } catch (Exception startupException) {
-            getLogger().error("Failed to start service '{}' of plugin '{}'", service, plugin, startupException);
+            log.error("Failed to start service '{}' of plugin '{}'", service, plugin, startupException);
         }
     }
 }

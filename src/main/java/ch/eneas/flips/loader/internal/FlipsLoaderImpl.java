@@ -2,112 +2,79 @@ package ch.eneas.flips.loader.internal;
 
 import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.FlipsLoader;
-import ch.eneas.flips.loader.api.Service;
-import ch.eneas.flips.loader.api.ClassProcessStage.ClassProcessInfo;
+import com.google.common.base.Preconditions;
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIBukkitConfig;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.ApiStatus;
-import org.slf4j.Logger;
 
-import java.io.IOException;
-import java.lang.reflect.Modifier;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-@ApiStatus.Internal
-public final class FlipsLoaderImpl extends JavaPlugin implements FlipsLoader {
-    private final Map<Service, JavaPlugin> services = new HashMap<>();
-    private final Logger logger = getSLF4JLogger();
-    private final List<ClassProcessStage<?>> standardStages = Arrays.asList(
-        new CommandRegisterStage(),
-        new CommandAnnotatedStage<>(),
-        new ServiceStage(services),
-        new ListenerStage()
-    );
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class FlipsLoaderImpl implements FlipsLoader {
+    @Getter
+    private static final FlipsLoader instance = new FlipsLoaderImpl();
+
+    private final Map<JavaPlugin, PluginInitializer> initializers = new HashMap<>();
 
     @Override
-    public void registerPluginClasses(JavaPlugin plugin, ClassProcessStage<?>[] customStages) {
-        registerPluginClassesDelayed(plugin, customStages).init();
+    public void initPluginClasses(JavaPlugin plugin, ClassProcessStage<?>... customStages) {
+        initPluginClassesDelayed(plugin, customStages).run();
     }
 
     @Override
-    public DelayedInit registerPluginClassesDelayed(JavaPlugin plugin, ClassProcessStage<?>... customStages) {
-        Set<Class<?>> classes = getClasses(plugin)
-            .stream()
-            .filter(cls -> !cls.isInterface() && !Modifier.isAbstract(cls.getModifiers()))
-            .collect(Collectors.toSet());
-
-        List<ClassProcessStage<?>> stages = Stream.concat(standardStages.stream(), Arrays.stream(customStages)).toList();
-
-        Map<ClassProcessStage<?>, List<Class<?>>> matchingClasses = stages.parallelStream()
-            .collect(Collectors.toMap(stage -> stage, stage -> new ArrayList<>()));
-
-        classes.parallelStream().forEach(clazz -> stages.forEach(stage -> {
-            if (stage.matchesClass(clazz)) {
-                matchingClasses.get(stage).add(clazz);
-            }
-        }));
-
-        String normalizedPluginName = plugin.getName().strip().toLowerCase().replace(' ', '_');
-        var processInfos = matchingClasses.values().parallelStream()
-            .flatMap(List::stream)
-            .distinct()
-            .collect(Collectors.toMap(clazz -> clazz, clazz -> createClassProcessInfo(plugin, clazz, normalizedPluginName)));
-
-        return () -> stages.forEach(stage -> matchingClasses.get(stage).forEach(clazz -> {
-            try {
-                //noinspection unchecked,rawtypes
-                stage.processClass((ClassProcessInfo) processInfos.get(clazz));
-            } catch (Exception e) {
-                getSLF4JLogger().error("Error in {} stage while processing {} of plugin {}", stage.getStageDescriptor(), clazz, plugin, e);
-            }
-        }));
-    }
-
-    private static Set<Class<?>> getClasses(JavaPlugin plugin) {
-        try {
-            return ClassCollector.collectPluginClasses(plugin);
-        } catch (IOException | ClassNotFoundException e) {
-            throw new RuntimeException("Failed to load plugin classes!", e);
+    public DelayedInit initPluginClassesDelayed(JavaPlugin plugin, ClassProcessStage<?>... customStages) {
+        if (initializers.containsKey(plugin)) {
+            throw new IllegalStateException("plugin already initialized!");
         }
-    }
 
-    private static <T> ClassProcessInfo<T> createClassProcessInfo(JavaPlugin plugin, Class<T> clazz, String normalizedPluginName) {
-        return new ClassProcessInfo<>() {
-            final T instance = Instantiator.getInstance(clazz, plugin);
+        // TODO only do if enabled in config
+        CommandAPI.onLoad(new CommandAPIBukkitConfig(plugin)
+            .usePluginNamespace()
+            .silentLogs(true));
+        CommandAPI.onEnable();
 
-            @Override
-            public T getProcessInstance() {
-                return instance;
-            }
-
-            @Override
-            public Class<T> getProcessClass() {
-                return clazz;
-            }
-
-            @Override
-            public JavaPlugin getSourcePlugin() {
-                return plugin;
-            }
-
-            @Override
-            public String getNormalizedPluginName() {
-                return normalizedPluginName;
-            }
-        };
+        var initializer = new PluginInitializer(plugin, List.of(customStages));
+        initializers.put(plugin, initializer);
+        return initializer.initClasses();
     }
 
     @Override
-    public void onDisable() {
-        for (Map.Entry<Service, JavaPlugin> entry : services.entrySet()) {
-            Service service = entry.getKey();
-            JavaPlugin plugin = entry.getValue();
-            try {
-                service.shutdown(plugin);
-            } catch (Exception e) {
-                logger.error("Failed to shutdown service '{}' from plugin '{}'", service, plugin, e);
-            }
-        }
+    public void deinitPluginClasses(JavaPlugin plugin) {
+        var initializer = validate(initializers.remove(plugin), "plugin not initialized / already deinitialized!");
+        initializer.deinitClasses();
+
+        // TODO only do if enabled in config
+        CommandAPI.onDisable();
+    }
+
+    @Override
+    public <P extends JavaPlugin> P getPluginInstance(Class<P> clazz) {
+        var plugin = initializers.keySet().stream()
+            .filter(clazz::isInstance)
+            .map(clazz::cast)
+            .findAny()
+            .orElse(null);
+        return validate(plugin, "no registered plugin for %s found", clazz);
+    }
+
+    @Override
+    public <T> T getInitializedInstance(JavaPlugin plugin, Class<T> clazz) {
+        var initializer = validate(initializers.get(plugin), "plugin not initialized");
+        return validate(initializer.getInstance(clazz), "no registered instance for %s found", clazz);
+    }
+
+    @Override
+    public <T> T getInitializedInstance(Class<? extends JavaPlugin> pluginClazz, Class<T> clazz) {
+        return getInitializedInstance(getPluginInstance(pluginClazz), clazz);
+    }
+
+    private <T> T validate(T obj, String msg, Object... args) {
+        Preconditions.checkState(obj != null, msg, args);
+        return obj;
     }
 }

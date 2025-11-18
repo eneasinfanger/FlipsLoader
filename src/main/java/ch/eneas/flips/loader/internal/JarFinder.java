@@ -1,5 +1,6 @@
 package ch.eneas.flips.loader.internal;
 
+import lombok.extern.slf4j.Slf4j;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.PluginClassLoader;
 
@@ -11,8 +12,7 @@ import java.lang.reflect.InaccessibleObjectException;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 
-import static ch.eneas.flips.loader.internal.FlipsLoaderDelegate.getLogger;
-
+@Slf4j
 class JarFinder {
     private static final Field pluginClassLoaderJarField;
 
@@ -23,15 +23,15 @@ class JarFinder {
             field = PluginClassLoader.class.getDeclaredField("jar");
 
             if (field.getType() != JarFile.class) {
-                getLogger().warn("Got WRONG 'jar' field in PluginClassLoader: {}", field);
+                log.warn("Got WRONG 'jar' field in PluginClassLoader: {}", field);
                 field = null;
             } else {
                 field.setAccessible(true);
             }
         } catch (NoSuchFieldException e) {
-            getLogger().warn("Failed to get 'jar' field in PluginClassLoader: {}", e.toString());
+            log.warn("Failed to get 'jar' field in PluginClassLoader: {}", e.toString());
         } catch (InaccessibleObjectException e) {
-            getLogger().warn("Failed to access 'jar' field in PluginClassLoader: {}", e.toString());
+            log.warn("Failed to access 'jar' field in PluginClassLoader: {}", e.toString());
         }
         pluginClassLoaderJarField = field;
     }
@@ -44,7 +44,7 @@ class JarFinder {
             return new JarInfo(pluginJar, false);
         }
         var jar = new JarInfo(new JarFile(findPluginJar(plugin)), true);
-        getLogger().warn("Had to obtain plugin '{}' classes via the file in server plugins folder", plugin);
+        log.warn("Had to obtain plugin '{}' classes via the file in server plugins folder", plugin);
         return jar;
     }
 
@@ -54,7 +54,7 @@ class JarFinder {
             try {
                 return (JarFile) pluginClassLoaderJarField.get(plCl);
             } catch (IllegalAccessException e) {
-                getLogger().warn("Failed to get jar from field from plugins classloader: {}", e.toString());
+                log.warn("Failed to get jar from field from plugins classloader: {}", e.toString());
             }
         }
         return null;

@@ -1,5 +1,0 @@
-name: FlipsLoader
-version: '1.0-SNAPSHOT'
-main: ch.eneas.flips.loader.internal.FlipsLoaderImpl
-api-version: '1.21'
-depend: [CommandAPI]

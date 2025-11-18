@@ -12,16 +12,14 @@ import java.util.Map;
 import static java.util.Objects.requireNonNull;
 
 class Instantiator {
-    private static final Map<Class<?>, Object> instances = new HashMap<>();
+    private final Map<Class<?>, Object> instances = new HashMap<>();
 
-    private Instantiator() {}
-
-    static void addInstance(Object instance) {
+    void addInstance(Object instance) {
         instances.put(instance.getClass(), instance);
     }
 
     @SuppressWarnings("unchecked")
-    static <T>T getInstance(Class<T> clazz, JavaPlugin srcPlugin) throws NewInstanceFailedException {
+    <T>T getInstance(Class<T> clazz, JavaPlugin srcPlugin) throws NewInstanceFailedException {
         Object instance = instances.get(clazz);
         if (instance != null) {
             return (T) instance;
@@ -32,11 +30,11 @@ class Instantiator {
     }
 
     @SuppressWarnings("unchecked")
-    static <T>T getCachedInstance(Class<T> clazz) {
+    <T>T getCachedInstance(Class<T> clazz) {
         return (T) instances.get(clazz);
     }
 
-    private static Object createInstance(Class<?> clazz, JavaPlugin srcPlugin) throws NewInstanceFailedException {
+    private Object createInstance(Class<?> clazz, JavaPlugin srcPlugin) throws NewInstanceFailedException {
         try {
             final Bit isNestedClass = Bit.of(clazz.isMemberClass() && !Modifier.isStatic(clazz.getModifiers()));
             final Constructor<?> con = getConstructor(clazz, isNestedClass, srcPlugin.getClass());

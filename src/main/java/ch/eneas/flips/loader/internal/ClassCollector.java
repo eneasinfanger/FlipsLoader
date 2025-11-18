@@ -14,7 +14,6 @@ class ClassCollector {
     private ClassCollector() {}
 
     public static Set<Class<?>> collectPluginClasses(Plugin plugin) throws IOException, ClassNotFoundException {
-        Instantiator.addInstance(plugin);
         JarInfo jar = JarFinder.getPluginJar(plugin);
         try {
             return loadJarClasses(plugin, jar.file());
