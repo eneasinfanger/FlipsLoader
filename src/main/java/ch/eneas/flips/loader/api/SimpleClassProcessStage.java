@@ -28,4 +28,9 @@ public class SimpleClassProcessStage<T> implements ClassProcessStage<T> {
     public void processClass(ClassProcessInfo<T> info) {
         processor.accept(info);
     }
+
+    @Override
+    public String toString() {
+        return stageDescriptor + " stage";
+    }
 }

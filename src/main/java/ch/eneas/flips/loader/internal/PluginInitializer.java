@@ -1,7 +1,6 @@
 package ch.eneas.flips.loader.internal;
 
-import ch.eneas.flips.loader.api.ClassProcessStage;
-import ch.eneas.flips.loader.api.Service;
+import ch.eneas.flips.loader.api.*;
 import lombok.extern.slf4j.Slf4j;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -13,7 +12,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static ch.eneas.flips.loader.api.ClassProcessStage.ClassProcessInfo;
 import static ch.eneas.flips.loader.api.FlipsLoader.DelayedInit;
+import static ch.eneas.flips.loader.internal.DefaultClassProcessStages.*;
 
 @Slf4j
 class PluginInitializer {
@@ -24,10 +25,10 @@ class PluginInitializer {
 
     PluginInitializer(JavaPlugin plugin, List<ClassProcessStage<?>> customStages) {
         this.plugin = plugin;
-        processStages.add(new CommandRegisterStage());
-        processStages.add(new CommandAnnotatedStage<>());
-        processStages.add(new ServiceStage(services::add));
-        processStages.add(new ListenerStage());
+        processStages.add(commandRegisterStage());
+        processStages.add(annotatedCommandStage());
+        processStages.add(serviceStage(services::add));
+        processStages.add(listenerStage());
         processStages.addAll(customStages);
     }
 
@@ -37,6 +38,7 @@ class PluginInitializer {
             .filter(cls -> !cls.isInterface() && !Modifier.isAbstract(cls.getModifiers()))
             .collect(Collectors.toSet());
 
+        log.debug("Using stages: {}", processStages);
         Map<ClassProcessStage<?>, List<Class<?>>> matchingClasses = processStages.parallelStream()
             .collect(Collectors.toMap(stage -> stage, stage -> new ArrayList<>()));
 
@@ -46,6 +48,7 @@ class PluginInitializer {
             }
             processStages.forEach(stage -> {
                 if (stage.matchesClass(clazz)) {
+                    log.debug("Found {} matching {}.", clazz.getName(), stage.getStageDescriptor());
                     matchingClasses.get(stage).add(clazz);
                 }
             });
@@ -61,8 +64,9 @@ class PluginInitializer {
 
         return () -> processStages.forEach(stage -> matchingClasses.get(stage).forEach(clazz -> {
             try {
+                log.info("Processing {} {}", stage.getStageDescriptor(), clazz.getName());
                 //noinspection unchecked,rawtypes
-                stage.processClass((ClassProcessStage.ClassProcessInfo) processInfos.get(clazz));
+                stage.processClass((ClassProcessInfo) processInfos.get(clazz));
             } catch (Exception e) {
                 log.error("Error in {} stage while processing {} of plugin {}", stage.getStageDescriptor(), clazz, plugin, e);
             }
