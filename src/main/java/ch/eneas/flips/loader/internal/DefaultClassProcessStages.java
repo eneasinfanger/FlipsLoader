@@ -4,7 +4,7 @@ import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.ClassProcessStage.ClassProcessInfo;
 import ch.eneas.flips.loader.api.CommandRegister;
 import ch.eneas.flips.loader.api.Service;
-import ch.eneas.flips.loader.api.SimpleClassProcessStage;
+import ch.eneas.flips.loader.util.SimpleClassProcessStage;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.bukkit.Bukkit;

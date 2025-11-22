@@ -1,5 +1,6 @@
-package ch.eneas.flips.loader.api;
+package ch.eneas.flips.loader.util;
 
+import ch.eneas.flips.loader.api.ClassProcessStage;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
