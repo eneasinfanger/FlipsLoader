@@ -2,6 +2,7 @@ package ch.eneas.flips.loader.internal;
 
 import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.FlipsLoaderConfig;
+import com.google.common.collect.ImmutableList;
 import dev.jorel.commandapi.CommandAPIBukkitConfig;
 import lombok.Getter;
 import lombok.NonNull;
@@ -59,6 +60,15 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
     public FlipsLoaderConfig customProcessStages(List<ClassProcessStage<?>> customProcessStages) {
         checkEditable();
         this.customProcessStages = List.copyOf(customProcessStages);
+        return this;
+    }
+
+    @Override
+    public FlipsLoaderConfig customProcessStages(ClassProcessStage<?> first, ClassProcessStage<?>... more) {
+        checkEditable();
+        this.customProcessStages = ImmutableList.<ClassProcessStage<?>>builderWithExpectedSize(more.length + 1)
+            .add(first).add(more)
+            .build();
         return this;
     }
 

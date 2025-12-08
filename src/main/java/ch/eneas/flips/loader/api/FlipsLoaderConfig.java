@@ -59,4 +59,13 @@ public interface FlipsLoaderConfig {
      * @return this config
      */
     FlipsLoaderConfig customProcessStages(List<ClassProcessStage<?>> customProcessStages);
+
+    /**
+     * Custom instances of {@link ClassProcessStage} for discovering other classes than described in {@link FlipsLoader#initPluginClasses(JavaPlugin, Consumer)}
+     * and evaluating custom initialization logic.
+     *
+     * @return this config
+     */
+    // use single argument before varargs to avoid identical signatures with internal config getter which has the same name
+    FlipsLoaderConfig customProcessStages(ClassProcessStage<?> customStage, ClassProcessStage<?>... customStages);
 }
