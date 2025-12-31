@@ -4,11 +4,12 @@ import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.Service;
 import com.google.common.collect.ImmutableList;
 import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPIBukkitConfig;
+import dev.jorel.commandapi.CommandAPIPaperConfig;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.slf4j.Logger;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,8 +83,7 @@ class PluginInitializer {
         if (!config.initCommandAPI()) {
             return;
         }
-        var cmdConfig = new CommandAPIBukkitConfig(config.plugin())
-            .usePluginNamespace()
+        var cmdConfig = new CommandAPIPaperConfig(config.plugin())
             .silentLogs(true);
         config.commandAPICustomizer().accept(cmdConfig);
 
@@ -104,8 +104,10 @@ class PluginInitializer {
     private static Set<Class<?>> getClasses(JavaPlugin plugin) {
         try {
             return ClassCollector.collectPluginClasses(plugin);
-        } catch (IOException | ClassNotFoundException e) {
-            throw new RuntimeException("Failed to load plugin classes!", e);
+        } catch (IOException e) {
+            throw new UncheckedIOException("IO-Operation failed while loading plugin '" + plugin + "' classes!", e);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Failed to load class file of plugin '" + plugin + "'!", e);
         }
     }
 
