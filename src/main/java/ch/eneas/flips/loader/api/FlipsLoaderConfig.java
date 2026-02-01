@@ -1,8 +1,8 @@
 package ch.eneas.flips.loader.api;
 
 import dev.jorel.commandapi.CommandAPI;
-import dev.jorel.commandapi.CommandAPIBukkitConfig;
 import dev.jorel.commandapi.CommandAPIConfig;
+import dev.jorel.commandapi.CommandAPIPaperConfig;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
@@ -27,7 +27,7 @@ public interface FlipsLoaderConfig {
      * @return this config
      * @apiNote Default FlipsLoader already sets the config's plugin to the initialising plugin, sets the namespace to use the plugins name and enables silent logs.
      */
-    FlipsLoaderConfig commandAPICustomizer(Consumer<CommandAPIBukkitConfig> customizer);
+    FlipsLoaderConfig commandAPICustomizer(Consumer<CommandAPIPaperConfig> customizer);
 
     /**
      * If enabled then the loader logs some values about which classes are discovered and processed.

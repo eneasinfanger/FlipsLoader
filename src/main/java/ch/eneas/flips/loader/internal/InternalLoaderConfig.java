@@ -3,7 +3,7 @@ package ch.eneas.flips.loader.internal;
 import ch.eneas.flips.loader.api.ClassProcessStage;
 import ch.eneas.flips.loader.api.FlipsLoaderConfig;
 import com.google.common.collect.ImmutableList;
-import dev.jorel.commandapi.CommandAPIBukkitConfig;
+import dev.jorel.commandapi.CommandAPIPaperConfig;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.experimental.Accessors;
@@ -23,7 +23,7 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
 
     private boolean initCommandAPI = true;
     @NonNull
-    private Consumer<CommandAPIBukkitConfig> commandAPICustomizer = config -> {};
+    private Consumer<CommandAPIPaperConfig> commandAPICustomizer = config -> {};
     private boolean debugLoader = false;
     private List<String> searchPackages = List.of();
     private List<ClassProcessStage<?>> customProcessStages = List.of();
@@ -36,7 +36,7 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
     }
 
     @Override
-    public FlipsLoaderConfig commandAPICustomizer(Consumer<CommandAPIBukkitConfig> customizer) {
+    public FlipsLoaderConfig commandAPICustomizer(@NonNull Consumer<CommandAPIPaperConfig> customizer) {
         checkEditable();
         commandAPICustomizer = customizer;
         return this;
@@ -57,14 +57,14 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
     }
 
     @Override
-    public FlipsLoaderConfig customProcessStages(List<ClassProcessStage<?>> customProcessStages) {
+    public FlipsLoaderConfig customProcessStages(@NonNull List<ClassProcessStage<?>> customProcessStages) {
         checkEditable();
         this.customProcessStages = List.copyOf(customProcessStages);
         return this;
     }
 
     @Override
-    public FlipsLoaderConfig customProcessStages(ClassProcessStage<?> first, ClassProcessStage<?>... more) {
+    public FlipsLoaderConfig customProcessStages(@NonNull ClassProcessStage<?> first, @NonNull ClassProcessStage<?>... more) {
         checkEditable();
         this.customProcessStages = ImmutableList.<ClassProcessStage<?>>builderWithExpectedSize(more.length + 1)
             .add(first).add(more)
@@ -72,13 +72,13 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
         return this;
     }
 
-    void seal(@NonNull JavaPlugin plugin) {
+    synchronized void seal(@NonNull JavaPlugin plugin) {
         checkEditable();
+        this.editable = false;
         this.plugin = plugin;
         this.searchPackages = Stream.concat(searchPackages.stream(), Stream.of(plugin.getClass().getPackageName()))
             .distinct()
             .toList();
-        this.editable = false;
     }
 
     private void checkEditable() {
