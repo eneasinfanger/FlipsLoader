@@ -2,7 +2,6 @@ package ch.eneas.flips.loader.internal;
 
 import ch.eneas.flips.libs.logging.LazyLogger;
 import ch.eneas.flips.libs.logging.LogUtils;
-import ch.eneas.flips.loader.api.FlipsLoaderConfig;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.bukkit.plugin.java.JavaPlugin;

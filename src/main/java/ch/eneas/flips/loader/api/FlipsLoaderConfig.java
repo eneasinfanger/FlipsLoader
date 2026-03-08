@@ -3,7 +3,6 @@ package ch.eneas.flips.loader.api;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIConfig;
 import dev.jorel.commandapi.CommandAPIPaperConfig;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -38,34 +37,17 @@ public interface FlipsLoaderConfig {
     FlipsLoaderConfig debugLoader(boolean debug);
 
     /**
-     * Which packages should be used for discovering classes.
+     * Which packages should not be used for discovering classes.
      * This exists since a lot of plugins use shading and without limiting discovery to certain packages it can cause performance issues or runtime errors.
      * <p>
      * Package names should be dot-separated and all packages starting with an item of this list are considered.
      * </p>
      * <p>
-     * For example if {@code ch.eneas} is provided, then packages like {@code ch.eneas.flips} and {@code ch.eneas.hello.world} <b>will</b> be searched.
+     * For example if {@code ch.eneas} is provided, then packages like {@code ch.eneas.flips} and {@code ch.eneas.hello.world} <b>will</b> be ignored.
      * </p>
      *
      * @return this config
-     * @apiNote the package of the initialised plugin is automatically added to the packages in this list
+     * @apiNote the {@code dev.jorel.commandapi} package is excluded by default.
      */
-    FlipsLoaderConfig searchPackages(List<String> searchPackages);
-
-    /**
-     * Custom instances of {@link ClassProcessStage} for discovering other classes than described in {@link FlipsLoader#initPluginClasses(JavaPlugin, Consumer)}
-     * and evaluating custom initialization logic.
-     *
-     * @return this config
-     */
-    FlipsLoaderConfig customProcessStages(List<ClassProcessStage<?>> customProcessStages);
-
-    /**
-     * Custom instances of {@link ClassProcessStage} for discovering other classes than described in {@link FlipsLoader#initPluginClasses(JavaPlugin, Consumer)}
-     * and evaluating custom initialization logic.
-     *
-     * @return this config
-     */
-    // use single argument before varargs to avoid identical signatures with internal config getter which has the same name
-    FlipsLoaderConfig customProcessStages(ClassProcessStage<?> customStage, ClassProcessStage<?>... customStages);
+    FlipsLoaderConfig ignoredPackages(List<String> ignorePackages);
 }
