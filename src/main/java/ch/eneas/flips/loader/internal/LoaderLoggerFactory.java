@@ -26,7 +26,12 @@ final class LoaderLoggerFactory {
 
     public static void debug(InternalLoaderConfig config, Logger logger, String message, Object... params) {
         if (config.debugLoader()) {
-            // using INFO-Level and not DEBUG, because paper never shows DEBUG logs
+            logger.info(message, params);
+        }
+    }
+
+    public static void debugInj(InternalLoaderConfig config, Logger logger, String message, Object... params) {
+        if (config.debugInjection()) {
             logger.info(message, params);
         }
     }

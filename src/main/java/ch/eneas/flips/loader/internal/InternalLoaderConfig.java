@@ -24,6 +24,7 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
     @NonNull
     private Consumer<CommandAPIPaperConfig> commandAPICustomizer = config -> {};
     private boolean debugLoader = false;
+    private boolean debugInjection = false;
     private List<String> ignorePackages = List.of();
 
     @Override
@@ -44,6 +45,13 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
     public FlipsLoaderConfig debugLoader(boolean debug) {
         checkEditable();
         debugLoader = debug;
+        return this;
+    }
+
+    @Override
+    public FlipsLoaderConfig debugInjection(boolean debug) {
+        checkEditable();
+        debugInjection = debug;
         return this;
     }
 

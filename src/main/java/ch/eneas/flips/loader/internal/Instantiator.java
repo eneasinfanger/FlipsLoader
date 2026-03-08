@@ -139,7 +139,7 @@ class Instantiator {
     }
 
     private void debugLog(JavaPlugin plugin, String msg, Object... params) {
-        LoaderLoggerFactory.debug(config, getLogger(plugin), msg, params);
+        LoaderLoggerFactory.debugInj(config, getLogger(plugin), msg, params);
     }
 
     private Logger getLogger(JavaPlugin plugin) {

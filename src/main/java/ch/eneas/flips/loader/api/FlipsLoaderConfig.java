@@ -37,6 +37,14 @@ public interface FlipsLoaderConfig {
     FlipsLoaderConfig debugLoader(boolean debug);
 
     /**
+     * If enabled then the loader logs additional values about which classes are created, cached, etc. for injection.
+     *
+     * @return this config
+     * @apiNote Defaults to {@code false}.
+     */
+    FlipsLoaderConfig debugInjection(boolean debug);
+
+    /**
      * Which packages should not be used for discovering classes.
      * This exists since a lot of plugins use shading and without limiting discovery to certain packages it can cause performance issues or runtime errors.
      * <p>
