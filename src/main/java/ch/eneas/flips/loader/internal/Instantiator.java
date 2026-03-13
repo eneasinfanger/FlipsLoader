@@ -3,17 +3,16 @@ package ch.eneas.flips.loader.internal;
 import ch.eneas.flips.loader.api.Inject;
 import ch.eneas.flips.loader.api.Injectable;
 import ch.eneas.flips.loader.api.InjectionException;
+import ch.eneas.flips.loader.api.Instance;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.slf4j.Logger;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InaccessibleObjectException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static ch.eneas.flips.libs.logging.LogUtils.lazyToString;
 import static java.util.Objects.requireNonNull;
@@ -67,13 +66,23 @@ class Instantiator {
             final Object[] initArgs = new Object[con.getParameterCount()];
             Class<?>[] paramTypes = con.getParameterTypes();
             for (int i = 0; i < con.getParameterCount(); i++) {
-                Class<?> target;
-                try {
-                    target = getInjectableCandidate(paramTypes[i], classCache);
-                } catch (InjectionException e) {
-                    throw new InjectionException(e.getMessage() + " At: " + formatConParams(con, isNestedClass, paramTypes, i));
+                if (paramTypes[i] == Instance.class) {
+                    Class<?> resolvedType;
+                    try {
+                        resolvedType = resolveInstanceType(con.getGenericParameterTypes()[i]);
+                    } catch (InjectionException e) {
+                        throw new InjectionException(e.getMessage() + " => " + formatConParams(con, isNestedClass, paramTypes, i));
+                    }
+                    initArgs[i] = new DynamicInstance<>(this, resolvedType, srcPlugin);
+                } else {
+                    Class<?> target;
+                    try {
+                        target = getInjectableCandidate(paramTypes[i], classCache);
+                    } catch (InjectionException e) {
+                        throw new InjectionException(e.getMessage() + " => " + formatConParams(con, isNestedClass, paramTypes, i));
+                    }
+                    initArgs[i] = obtainInstance(target, srcPlugin, injectionCycle);
                 }
-                initArgs[i] = obtainInstance(target, srcPlugin, injectionCycle);
             }
             return con.newInstance(initArgs);
         } catch (InaccessibleObjectException e) {
@@ -85,6 +94,18 @@ class Instantiator {
         } catch (IllegalAccessException e) {
             throw new NewInstanceFailedException("constructor of " + clazz + " is inaccessible", e);
         }
+    }
+
+    private Class<?> resolveInstanceType(Type genericInstanceType) {
+        if (!(genericInstanceType instanceof ParameterizedType pt)) {
+            throw new InjectionException("No type for instance provided! Must be used as Instance<Type>!");
+        }
+        if (pt.getActualTypeArguments()[0] instanceof Class<?> c) {
+            return c;
+        } else if (pt.getActualTypeArguments()[0] instanceof ParameterizedType p) {
+            return (Class<?>) p.getRawType();
+        }
+        throw new InjectionException("Unable to use Instance with type variables!");
     }
 
     public void injectPluginFields(@NonNull JavaPlugin plugin) {
@@ -108,14 +129,25 @@ class Instantiator {
                     if (f.get(instance) != null) {
                         throw new InjectionException("@Inject field " + f.getDeclaringClass() + "#" + f.getName() + " must not be previously initialized!");
                     }
-                    Class<?> injectClass;
-                    try {
-                        injectClass = getInjectableCandidate(f.getType(), classCache);
-                    } catch (InjectionException e) {
-                        throw new InjectionException(f.getDeclaringClass() + "#" + f.getName() + ": " + e.getMessage());
+                    Object injectInstance;
+                    if (f.getType() == Instance.class) {
+                        Class<?> resolvedType;
+                        try {
+                            resolvedType = resolveInstanceType(f.getGenericType());
+                        } catch (InjectionException e) {
+                            throw new InjectionException(f.getDeclaringClass() + "#" + f.getName() + ": " + e.getMessage());
+                        }
+                        injectInstance = new DynamicInstance<>(this, resolvedType, srcPlugin);
+                    } else {
+                        Class<?> injectClass;
+                        try {
+                            injectClass = getInjectableCandidate(f.getType(), classCache);
+                        } catch (InjectionException e) {
+                            throw new InjectionException(f.getDeclaringClass() + "#" + f.getName() + ": " + e.getMessage());
+                        }
+                        debugLog(srcPlugin, "Injecting field {}#{} with type {}", f.getDeclaringClass(), f.getName(), injectClass);
+                        injectInstance = obtainInstance(injectClass, srcPlugin, injectionCycle);
                     }
-                    debugLog(srcPlugin, "Injecting field {}#{} with type {}", f.getDeclaringClass(), f.getName(), injectClass);
-                    Object injectInstance = obtainInstance(injectClass, srcPlugin, injectionCycle);
                     f.set(instance, injectInstance);
                 } catch (InaccessibleObjectException | IllegalAccessException e) {
                     throw new InjectionException("Couldn't access @Inject field " + f.getDeclaringClass() + "#" + f.getName(), e);
@@ -167,6 +199,16 @@ class Instantiator {
         } catch (NoSuchMethodException e) {
             throw new NewInstanceFailedException("@Injectable " + clazz + " must have an accessible no-arg constructor or constructor annotated with @Inject", null);
         }
+    }
+
+    <T> Stream<Class<? extends T>> getInjectableCandidates(Class<T> clazz) {
+        if (!clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
+            if (isInjectable(clazz) || JavaPlugin.class.isAssignableFrom(clazz)) {
+                return Stream.of(clazz);
+            }
+            return Stream.empty();
+        }
+        return classCache.getChildren(clazz, ClassCache.isNonAbstract(), Instantiator::isInjectable).stream();
     }
 
     static <T> Class<? extends T> getInjectableCandidate(Class<T> clazz, ClassCache classCache) {
