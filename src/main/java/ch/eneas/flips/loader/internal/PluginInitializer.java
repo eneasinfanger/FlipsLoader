@@ -20,7 +20,7 @@ import java.util.Set;
 
 import static ch.eneas.flips.loader.api.FlipsLoader.DelayedInit;
 import static ch.eneas.flips.loader.internal.Instantiator.isInjectable;
-import static ch.eneas.flips.loader.internal.LoaderLoggerFactory.debug;
+import static ch.eneas.flips.loader.internal.LogUtil.debug;
 import static ch.eneas.flips.loader.internal.RefUtil.unwrapCause;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -37,7 +37,7 @@ class PluginInitializer {
 
     PluginInitializer(InternalLoaderConfig config) {
         this.config = config;
-        this.log = LoaderLoggerFactory.getProcessLogger(config.plugin(), getClass());
+        this.log = LogUtil.getProcessLogger(config.plugin(), getClass());
         this.classCache = new ClassCache(getClasses(config.plugin()));
         this.instantiator = new Instantiator(classCache, config);
     }

@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static ch.eneas.flips.libs.logging.LogUtils.lazyToString;
+import static ch.eneas.flips.loader.internal.LogUtil.lazyToString;
 import static java.util.Objects.requireNonNull;
 
 @RequiredArgsConstructor
@@ -171,11 +171,11 @@ class Instantiator {
     }
 
     private void debugLog(JavaPlugin plugin, String msg, Object... params) {
-        LoaderLoggerFactory.debugInj(config, getLogger(plugin), msg, params);
+        LogUtil.debugInj(config, getLogger(plugin), msg, params);
     }
 
     private Logger getLogger(JavaPlugin plugin) {
-        return loggers.computeIfAbsent(plugin, p -> LoaderLoggerFactory.getProcessLogger(plugin, getClass()));
+        return loggers.computeIfAbsent(plugin, p -> LogUtil.getProcessLogger(plugin, getClass()));
     }
 
     private static Constructor<?> getInjectableConstructor(Class<?> clazz, Bit isNested) {

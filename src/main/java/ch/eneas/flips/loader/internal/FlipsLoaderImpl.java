@@ -20,7 +20,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class FlipsLoaderImpl implements FlipsLoader {
+class FlipsLoaderImpl implements FlipsLoader {
     @Getter
     private static final FlipsLoader instance = new FlipsLoaderImpl();
 

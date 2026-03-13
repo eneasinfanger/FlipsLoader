@@ -1,6 +1,6 @@
 package ch.eneas.flips.loader.api;
 
-import ch.eneas.flips.loader.internal.FlipsLoaderImpl;
+import ch.eneas.flips.loader.internal.ImplAccess;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.function.Consumer;
@@ -31,7 +31,7 @@ public interface FlipsLoader {
      * @return a {@code FlipsLoader} instance.
      */
     static FlipsLoader getLoader() {
-        return FlipsLoaderImpl.getInstance();
+        return ImplAccess.getLoader();
     }
 
     /**
@@ -47,7 +47,7 @@ public interface FlipsLoader {
 
     /**
      * <p>
-     * Everything described as in {@link #initPluginClasses(JavaPlugin, Consumer<FlipsLoaderConfig>)} but just loads the classes
+     * Everything described as in {@link #initPluginClasses(JavaPlugin, Consumer)} but just loads the classes
      * and creates the instances, but waits with the initialization until {@link DelayedInit#run()} is called.
      * </p><p>
      * Even if the resulting trigger is discarded or the {@code init} method is never called (which will result
@@ -125,8 +125,8 @@ public interface FlipsLoader {
      * Shortcut for {@link #getInstances(JavaPlugin, Class)} by also obtaining the plugin instance by class.
      *
      * @param pluginClazz The plugin class
-     * @param clazz  The super class
-     * @param <T>    Type of the super class
+     * @param clazz       The super class
+     * @param <T>         Type of the super class
      * @return Stream of children
      */
     <T> Stream<? extends T> getInstances(Class<? extends JavaPlugin> pluginClazz, Class<T> clazz);

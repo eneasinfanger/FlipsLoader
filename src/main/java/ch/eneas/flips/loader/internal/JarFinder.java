@@ -20,11 +20,11 @@ class JarFinder {
 
     JarFinder(JavaPlugin plugin) {
         this.plugin = plugin;
-        this.log = LoaderLoggerFactory.getProcessLogger(plugin, getClass());
+        this.log = LogUtil.getProcessLogger(plugin, getClass());
     }
 
     static {
-        final Logger log = LoaderLoggerFactory.getLoaderLogger(JarFinder.class);
+        final Logger log = LogUtil.getLoaderLogger(JarFinder.class);
 
         Field field = null;
         try {
