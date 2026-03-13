@@ -174,6 +174,7 @@ class PluginInitializer {
         private void initServices() {
             var serviceClasses = classCache.getChildren(Service.class, ClassCache.isNonAbstract(), this::isPackageNotIgnored);
             debug(config, log, "Found {} services: {}", serviceClasses.size(), serviceClasses);
+            warnIfNotInjectable(serviceClasses, "Service");
             serviceClasses.forEach(serviceCls -> {
                 var service = instantiator.getInstance(serviceCls, config.plugin());
                 try {
@@ -189,6 +190,7 @@ class PluginInitializer {
         private void initEventListeners() {
             var listeners = classCache.getChildren(Listener.class, ClassCache.isNonAbstract(), this::isPackageNotIgnored);
             debug(config, log, "Found {} event listeners: {}", listeners.size(), listeners);
+            warnIfNotInjectable(listeners, "Event listener");
             listeners.forEach(listenerCls -> {
                 var listener = instantiator.getInstance(listenerCls, config.plugin());
                 try {
