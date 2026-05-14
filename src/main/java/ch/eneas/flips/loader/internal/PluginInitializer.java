@@ -20,7 +20,7 @@ import java.util.Set;
 
 import static ch.eneas.flips.loader.api.FlipsLoader.DelayedInit;
 import static ch.eneas.flips.loader.internal.Instantiator.isInjectable;
-import static ch.eneas.flips.loader.internal.LogUtil.debug;
+import static ch.eneas.flips.loader.internal.LogUtil.debugInit;
 import static ch.eneas.flips.loader.internal.RefUtil.unwrapCause;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -44,11 +44,9 @@ class PluginInitializer {
 
     private Set<Class<?>> getClasses(JavaPlugin plugin) {
         try {
-            return ClassCollector.collectPluginClasses(plugin);
+            return ClassCollector.collectPluginClasses(plugin, config);
         } catch (IOException e) {
             throw new UncheckedIOException("IO-Operation failed while loading plugin '" + plugin + "' classes!", e);
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Failed to load class file of plugin '" + plugin + "'!", e);
         }
     }
 
@@ -56,8 +54,8 @@ class PluginInitializer {
         initCommandAPI();
         instantiator.injectPluginFields(config.plugin());
 
-        if (config.debugLoader()) {
-            debug(config, log, "Found {} classes (with {} being non-abstract) in plugin {}",
+        if (config.debugInitialization()) {
+            debugInit(config, log, "Found {} classes (with {} being non-abstract) in plugin {}",
                 classCache.getClassCount(false),
                 classCache.getClassCount(true),
                 config.plugin());
@@ -74,7 +72,7 @@ class PluginInitializer {
             .silentLogs(true);
         config.commandAPICustomizer().accept(cmdConfig);
 
-        debug(config, log, "Enabling CommandAPI...");
+        debugInit(config, log, "Enabling CommandAPI...");
         CommandAPI.onLoad(cmdConfig);
         CommandAPI.onEnable();
     }
@@ -104,12 +102,12 @@ class PluginInitializer {
         private void initCommandRegisters() {
             String pluginNamespace = config.plugin().getName().strip().toLowerCase().replace(' ', '_');
             var commandRegisters = classCache.getChildren(CommandRegister.class, ClassCache.isNonAbstract(), this::isPackageNotIgnored);
-            debug(config, log, "Found {} command registers: {}", commandRegisters.size(), commandRegisters);
+            debugInit(config, log, "Found {} command registers: {}", commandRegisters.size(), commandRegisters);
             warnIfNotInjectable(commandRegisters, "Command register");
             commandRegisters.forEach(regCls -> {
                 var reg = instantiator.getInstance(regCls, config.plugin());
                 try {
-                    debug(config, log, "Processing command register {}", regCls.getName());
+                    debugInit(config, log, "Processing command register {}", regCls.getName());
                     registerCommands(reg, pluginNamespace);
                 } catch (Exception e) {
                     log.error("Error while processing command register {} of plugin {}", regCls, config.plugin(), e);
@@ -135,12 +133,12 @@ class PluginInitializer {
                 .map(this::findAnnotatedClass)
                 .toArray(Class[]::new);
 
-            debug(config, log, "Found {} @Command annotated classes: {}", generatedCommands.length, generatedCommands);
+            debugInit(config, log, "Found {} @Command annotated classes: {}", generatedCommands.length, generatedCommands);
             warnIfNotInjectable(Arrays.asList(originalCommands), "@Command");
             for (int i = 0; i < generatedCommands.length; i++) {
                 if (originalCommands[i] != null) {
                     try {
-                        debug(config, log, "Processing @Command {}", originalCommands[i].getName());
+                        debugInit(config, log, "Processing @Command {}", originalCommands[i].getName());
                         registerAnnotatedCommands(generatedCommands[i]);
                     } catch (Exception e) {
                         log.error("Error while processing @Command {}/{} of plugin {}", originalCommands[i].getName(), generatedCommands[i].getName(), config.plugin(), e);
@@ -173,12 +171,12 @@ class PluginInitializer {
 
         private void initServices() {
             var serviceClasses = classCache.getChildren(Service.class, ClassCache.isNonAbstract(), this::isPackageNotIgnored);
-            debug(config, log, "Found {} services: {}", serviceClasses.size(), serviceClasses);
+            debugInit(config, log, "Found {} services: {}", serviceClasses.size(), serviceClasses);
             warnIfNotInjectable(serviceClasses, "Service");
             serviceClasses.forEach(serviceCls -> {
                 var service = instantiator.getInstance(serviceCls, config.plugin());
                 try {
-                    debug(config, log, "Starting service {}", serviceCls.getName());
+                    debugInit(config, log, "Starting service {}", serviceCls.getName());
                     service.startup(config.plugin());
                     services.add(service);
                 } catch (Exception startupException) {
@@ -189,12 +187,12 @@ class PluginInitializer {
 
         private void initEventListeners() {
             var listeners = classCache.getChildren(Listener.class, ClassCache.isNonAbstract(), this::isPackageNotIgnored);
-            debug(config, log, "Found {} event listeners: {}", listeners.size(), listeners);
+            debugInit(config, log, "Found {} event listeners: {}", listeners.size(), listeners);
             warnIfNotInjectable(listeners, "Event listener");
             listeners.forEach(listenerCls -> {
                 var listener = instantiator.getInstance(listenerCls, config.plugin());
                 try {
-                    debug(config, log, "Registering event listener {}", listenerCls.getName());
+                    debugInit(config, log, "Registering event listener {}", listenerCls.getName());
                     Bukkit.getServer()
                         .getPluginManager()
                         .registerEvents(listener, config.plugin());

@@ -24,14 +24,20 @@ final class LogUtil {
         return new LazyLogger(() -> LoggerFactory.getLogger(processingPlugin.getSLF4JLogger().getName() + "/" + name));
     }
 
-    public static void debug(InternalLoaderConfig config, Logger logger, String message, Object... params) {
-        if (config.debugLoader()) {
+    public static void debugInit(InternalLoaderConfig config, Logger logger, String message, Object... params) {
+        if (config.debugInitialization()) {
             logger.info(message, params);
         }
     }
 
     public static void debugInj(InternalLoaderConfig config, Logger logger, String message, Object... params) {
         if (config.debugInjection()) {
+            logger.info(message, params);
+        }
+    }
+
+    public static void debugCL(InternalLoaderConfig config, Logger logger, String message, Object... params) {
+        if (config.debugClassLoading()) {
             logger.info(message, params);
         }
     }

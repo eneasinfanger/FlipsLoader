@@ -2,6 +2,7 @@ package ch.eneas.flips.loader.internal;
 
 import ch.eneas.flips.loader.internal.JarFinder.JarInfo;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.util.Enumeration;
@@ -13,10 +14,10 @@ import java.util.jar.JarFile;
 class ClassCollector {
     private ClassCollector() {}
 
-    public static Set<Class<?>> collectPluginClasses(JavaPlugin plugin) throws IOException, ClassNotFoundException {
+    public static Set<Class<?>> collectPluginClasses(JavaPlugin plugin, InternalLoaderConfig config) throws IOException {
         JarInfo jar = new JarFinder(plugin).getPluginJar();
         try {
-            return loadJarClasses(plugin, jar.file());
+            return loadJarClasses(plugin, jar.file(), LogUtil.getProcessLogger(plugin, ClassCollector.class), config);
         } finally {
             if (jar.shouldClose()) {
                 jar.file().close();
@@ -24,7 +25,7 @@ class ClassCollector {
         }
     }
 
-    private static Set<Class<?>> loadJarClasses(JavaPlugin plugin, JarFile jarFile) throws ClassNotFoundException {
+    private static Set<Class<?>> loadJarClasses(JavaPlugin plugin, JarFile jarFile, Logger log, InternalLoaderConfig config) {
         var classes = new HashSet<Class<?>>();
         ClassLoader pluginClassLoader = plugin.getClass().getClassLoader();
         Enumeration<JarEntry> entries = jarFile.entries();
@@ -32,12 +33,24 @@ class ClassCollector {
             JarEntry entry = entries.nextElement();
             String entryName = entry.getName();
             if (entryName.endsWith(".class") && !entry.isDirectory()) {
+                if (entryName.endsWith("module-info.class") || entryName.endsWith("package-info.class")) {
+                    LogUtil.debugCL(config, log, "Skipping module-/package-info: {}", entryName);
+                    continue;
+                }
+
                 String className = entryName.replace('/', '.').replace(".class", "");
 
-                Class<?> clazz = Class.forName(className, false, pluginClassLoader);
-                classes.add(clazz);
-
-                collectInnerClasses(clazz, classes);
+                try {
+                    Class<?> clazz = Class.forName(className, false, pluginClassLoader);
+                    if (!clazz.isSynthetic() && !clazz.isAnonymousClass()) {
+                        classes.add(clazz);
+                        collectInnerClasses(clazz, classes);
+                    } else {
+                        LogUtil.debugCL(config, log, "Skipping synthetic/anonymous class: {}", clazz);
+                    }
+                } catch (ClassNotFoundException e) {
+                    log.warn("Failed to load class '{}' ({}):", className, entryName, e);
+                }
             }
         }
         return classes;

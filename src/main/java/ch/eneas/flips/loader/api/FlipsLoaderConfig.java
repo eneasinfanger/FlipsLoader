@@ -29,20 +29,13 @@ public interface FlipsLoaderConfig {
     FlipsLoaderConfig commandAPICustomizer(Consumer<CommandAPIPaperConfig> customizer);
 
     /**
-     * If enabled then the loader logs some values about which classes are discovered and processed.
+     * Debug categories for which the Loader logs additional values as described in the individual categories.
      *
+     * @param debugCategories categories which should be enabled
      * @return this config
      * @apiNote Defaults to {@code false}.
      */
-    FlipsLoaderConfig debugLoader(boolean debug);
-
-    /**
-     * If enabled then the loader logs additional values about which classes are created, cached, etc. for injection.
-     *
-     * @return this config
-     * @apiNote Defaults to {@code false}.
-     */
-    FlipsLoaderConfig debugInjection(boolean debug);
+    FlipsLoaderConfig debugLoader(DebugCategory... debugCategories);
 
     /**
      * Which packages should not be used for discovering classes.
@@ -58,4 +51,19 @@ public interface FlipsLoaderConfig {
      * @apiNote the {@code dev.jorel.commandapi} package is excluded by default.
      */
     FlipsLoaderConfig ignoredPackages(List<String> ignorePackages);
+
+    enum DebugCategory {
+        /**
+         * Loader logs some values about which classes are discovered and processed.
+         */
+        INITIALIZATION,
+        /**
+         * Loader logs which classes where ignored for loading or other special circumstances.
+         */
+        CLASS_LOADING,
+        /**
+         * Loader logs additional values about which classes are created, cached, etc. for injection.
+         */
+        INJECTION,
+    }
 }

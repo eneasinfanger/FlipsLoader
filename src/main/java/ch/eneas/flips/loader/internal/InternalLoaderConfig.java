@@ -3,28 +3,27 @@ package ch.eneas.flips.loader.internal;
 import ch.eneas.flips.loader.api.FlipsLoaderConfig;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIPaperConfig;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.experimental.Accessors;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkState;
 
-@Getter
+@Getter(AccessLevel.PACKAGE)
 @Accessors(fluent = true)
 class InternalLoaderConfig implements FlipsLoaderConfig {
     private JavaPlugin plugin;
-    private boolean editable = true;
     private boolean initCommandAPI = true;
     @NonNull
     private Consumer<CommandAPIPaperConfig> commandAPICustomizer = config -> {};
-    private boolean debugLoader = false;
-    private boolean debugInjection = false;
+    @Getter(AccessLevel.NONE)
+    private Set<DebugCategory> debugCategories = Set.of();
     private List<String> ignorePackages = List.of();
 
     @Override
@@ -42,16 +41,9 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
     }
 
     @Override
-    public FlipsLoaderConfig debugLoader(boolean debug) {
+    public FlipsLoaderConfig debugLoader(DebugCategory[] categories) {
         checkEditable();
-        debugLoader = debug;
-        return this;
-    }
-
-    @Override
-    public FlipsLoaderConfig debugInjection(boolean debug) {
-        checkEditable();
-        debugInjection = debug;
+        debugCategories = EnumSet.copyOf(Arrays.asList(categories));
         return this;
     }
 
@@ -64,7 +56,6 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
 
     synchronized void seal(@NonNull JavaPlugin plugin) {
         checkEditable();
-        this.editable = false;
         this.plugin = plugin;
         this.ignorePackages = Stream.concat(ignorePackages.stream(), Stream.of(CommandAPI.class.getPackageName()))
             .filter(Objects::nonNull)
@@ -72,7 +63,19 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
             .toList();
     }
 
+    boolean debugInitialization() {
+        return debugCategories.contains(DebugCategory.INITIALIZATION);
+    }
+
+    boolean debugInjection() {
+        return debugCategories.contains(DebugCategory.INJECTION);
+    }
+
+    boolean debugClassLoading() {
+        return debugCategories.contains(DebugCategory.CLASS_LOADING);
+    }
+
     private void checkEditable() {
-        checkState(editable, "config is no longer editable! do not mutate config after FlipsLoader#init.. was called");
+        checkState(plugin == null, "Do not mutate config after FlipsLoader#init.. was called");
     }
 }
