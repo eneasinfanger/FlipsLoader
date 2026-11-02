@@ -28,7 +28,7 @@ FlipsLoader is available through [JitPack](https://jitpack.io/#eneasinfanger/Fli
     <dependency>
         <groupId>com.github.eneasinfanger</groupId>
         <artifactId>FlipsLoader</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.1</version>
     </dependency>
 </dependencies>
 ```
@@ -37,10 +37,10 @@ Gradle:
 
 ```kotlin
 repositories { maven("https://jitpack.io") }
-dependencies { implementation("com.github.eneasinfanger:FlipsLoader:1.0.0") }
+dependencies { implementation("com.github.eneasinfanger:FlipsLoader:1.0.1") }
 ```
 
-Replace `1.0.0` with the [latest release tag](https://github.com/eneasinfanger/FlipsLoader/releases).
+Replace `1.0.1` with the [latest release tag](https://github.com/eneasinfanger/FlipsLoader/releases).
 The library is meant to be shaded into your plugin.
 
 To build it yourself instead: clone the repository and run `mvn clean install`.
