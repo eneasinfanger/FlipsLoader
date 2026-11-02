@@ -14,21 +14,36 @@ CDI-like features for minecraft paper-based plugin development.
 
 ### Dependency
 
-Currently not on mavencentral or any public maven repository, I think it's necessary to clone and install to local maven repository:
+FlipsLoader is available through [JitPack](https://jitpack.io/#eneasinfanger/FlipsLoader). Add the repository and the dependency to your `pom.xml`:
 
-- `git clone https://github.com/eneasinfanger/FlipsLoader.git`
-- `cd FlipsLoader`
-- `mvn clean install`
+```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
 
-Then add the following to your project's dependencies:
-
+<dependencies>
+    <dependency>
+        <groupId>com.github.eneasinfanger</groupId>
+        <artifactId>FlipsLoader</artifactId>
+        <version>1.0.0</version>
+    </dependency>
+</dependencies>
 ```
-<dependency>
-    <groupId>ch.eneas</groupId>
-    <artifactId>FlipsLoader</artifactId>
-    <version>1.0-SNAPSHOT</version>
-</dependency>
+
+Gradle:
+
+```kotlin
+repositories { maven("https://jitpack.io") }
+dependencies { implementation("com.github.eneasinfanger:FlipsLoader:1.0.0") }
 ```
+
+Replace `1.0.0` with the [latest release tag](https://github.com/eneasinfanger/FlipsLoader/releases).
+The library is meant to be shaded into your plugin.
+
+To build it yourself instead: clone the repository and run `mvn clean install`.
 
 ### Init class scanning / registration
 
