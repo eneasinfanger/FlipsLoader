@@ -1,6 +1,7 @@
 package ch.eneas.flips.loader.api;
 
 import ch.eneas.flips.loader.internal.ImplAccess;
+import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.function.Consumer;
@@ -36,7 +37,7 @@ public interface FlipsLoader {
 
     /**
      * Loads and initializes all classes implementing {@link CommandRegister}, {@link Service},
-     * {@link org.bukkit.event.Listener Listener}, classes annotated with {@link dev.jorel.commandapi.annotations.Command @Command}
+     * {@link Listener Listener}, classes annotated with {@link dev.jorel.commandapi.annotations.Command @Command}
      * and any classes matched by custom process stages.
      *
      * @param plugin       Plugin instance whose classes shall be searched.
@@ -63,7 +64,9 @@ public interface FlipsLoader {
     DelayedInit initPluginClassesDelayed(JavaPlugin plugin, Consumer<FlipsLoaderConfig> configurator);
 
     /**
-     * Shuts down all services. (maybe does more stuff like unregister something in the future)
+     * Shuts down all services and calls {@link AutoCloseable#close() close()} on all {@link CommandRegister
+     * CommandRegisters}, {@link Service Services} and {@link Listener Listeners} that implement
+     * the {@link AutoCloseable} interface.
      *
      * @param plugin Plugins whose services should be shutdown.
      * @throws RuntimeException if the plugin was not initialized or already deinitialized.

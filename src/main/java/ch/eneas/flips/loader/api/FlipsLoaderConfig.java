@@ -49,8 +49,24 @@ public interface FlipsLoaderConfig {
      *
      * @return this config
      * @apiNote the {@code dev.jorel.commandapi} package is excluded by default.
+     * @apiNote This can be used together with {@link #searchPackages(List)} for a more complex discovery filter
      */
-    FlipsLoaderConfig ignoredPackages(List<String> ignorePackages);
+    FlipsLoaderConfig ignoredPackages(List<String> packages);
+
+    /**
+     * Which packages should only be used for discovering classes.
+     * This exists since a lot of plugins use shading and without limiting discovery to certain packages it can cause performance issues or runtime errors.
+     * <p>
+     * Package names should be dot-separated and all packages starting with an item of this list are considered.
+     * </p>
+     * <p>
+     * For example if {@code ch.eneas} is provided, then packages like {@code ch.eneas.flips} and {@code ch.eneas.hello.world} <b>will</b> be searched.
+     * </p>
+     *
+     * @return this config
+     * @apiNote This can be used together with {@link #ignoredPackages(List)} for a more complex discovery filter
+     */
+    FlipsLoaderConfig searchPackages(List<String> packages);
 
     enum DebugCategory {
         /**

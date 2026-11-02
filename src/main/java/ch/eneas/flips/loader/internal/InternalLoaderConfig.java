@@ -9,8 +9,12 @@ import lombok.NonNull;
 import lombok.experimental.Accessors;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -23,8 +27,12 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
     @NonNull
     private Consumer<CommandAPIPaperConfig> commandAPICustomizer = config -> {};
     @Getter(AccessLevel.NONE)
-    private Set<DebugCategory> debugCategories = Set.of();
+    private Set<DebugCategory> debugCategories = EnumSet.noneOf(DebugCategory.class);
+    @Getter(AccessLevel.NONE)
     private List<String> ignorePackages = List.of();
+    @Getter(AccessLevel.NONE)
+    private List<String> searchPackages = List.of();
+    private Predicate<String> packageFilter;
 
     @Override
     public FlipsLoaderConfig initCommandAPI(boolean init) {
@@ -43,14 +51,21 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
     @Override
     public FlipsLoaderConfig debugLoader(DebugCategory[] categories) {
         checkEditable();
-        debugCategories = EnumSet.copyOf(Arrays.asList(categories));
+        Collections.addAll(debugCategories, categories);
         return this;
     }
 
     @Override
-    public FlipsLoaderConfig ignoredPackages(@NonNull List<String> ignorePackages) {
+    public FlipsLoaderConfig ignoredPackages(@NonNull List<String> packages) {
         checkEditable();
-        this.ignorePackages = List.copyOf(ignorePackages);
+        this.ignorePackages = List.copyOf(packages);
+        return this;
+    }
+
+    @Override
+    public FlipsLoaderConfig searchPackages(List<String> packages) {
+        checkEditable();
+        this.searchPackages = List.copyOf(packages);
         return this;
     }
 
@@ -58,9 +73,11 @@ class InternalLoaderConfig implements FlipsLoaderConfig {
         checkEditable();
         this.plugin = plugin;
         this.ignorePackages = Stream.concat(ignorePackages.stream(), Stream.of(CommandAPI.class.getPackageName()))
-            .filter(Objects::nonNull)
             .distinct()
             .toList();
+        Predicate<String> searchFilter = pkg -> searchPackages.stream().anyMatch(pkg::startsWith);
+        Predicate<String> ignoreFilter = pkg -> ignorePackages.stream().noneMatch(pkg::startsWith);
+        this.packageFilter = searchPackages.isEmpty() ? ignoreFilter : searchFilter.and(ignoreFilter);
     }
 
     boolean debugInitialization() {

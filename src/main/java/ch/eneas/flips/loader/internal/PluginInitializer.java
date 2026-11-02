@@ -13,10 +13,7 @@ import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static ch.eneas.flips.loader.api.FlipsLoader.DelayedInit;
 import static ch.eneas.flips.loader.internal.Instantiator.isInjectable;
@@ -34,6 +31,7 @@ class PluginInitializer {
     @Getter(AccessLevel.PACKAGE)
     private final Instantiator instantiator;
     private final List<Service> services = new ArrayList<>();
+    private final Set<AutoCloseable> closeables = new HashSet<>();
 
     PluginInitializer(InternalLoaderConfig config) {
         this.config = config;
@@ -78,6 +76,13 @@ class PluginInitializer {
     }
 
     public void deinitClasses() {
+        for (AutoCloseable closeable : closeables) {
+            try {
+                closeable.close();
+            } catch (Exception e) {
+                log.error("Failed to close closeable '{}' from plugin '{}'", closeable, config.plugin(), e);
+            }
+        }
         for (Service service : services) {
             try {
                 service.shutdown(config.plugin());
@@ -101,7 +106,7 @@ class PluginInitializer {
 
         private void initCommandRegisters() {
             String pluginNamespace = config.plugin().getName().strip().toLowerCase().replace(' ', '_');
-            var commandRegisters = classCache.getChildren(CommandRegister.class, ClassCache.isNonAbstract(), this::isPackageNotIgnored);
+            var commandRegisters = classCache.getChildren(CommandRegister.class, ClassCache.isNonAbstract(), this::includePackage);
             debugInit(config, log, "Found {} command registers: {}", commandRegisters.size(), commandRegisters);
             warnIfNotInjectable(commandRegisters, "Command register");
             commandRegisters.forEach(regCls -> {
@@ -109,6 +114,7 @@ class PluginInitializer {
                 try {
                     debugInit(config, log, "Processing command register {}", regCls.getName());
                     registerCommands(reg, pluginNamespace);
+                    registerCloseable(reg);
                 } catch (Exception e) {
                     log.error("Error while processing command register {} of plugin {}", regCls, config.plugin(), e);
                 }
@@ -127,7 +133,7 @@ class PluginInitializer {
         }
 
         private void initAnnotatedCommands() {
-            Class<?>[] generatedCommands = classCache.getClassesByName(n -> n.endsWith(COMMAND_CLASS_SUFFIX), ClassCache.isNonAbstract(), this::isPackageNotIgnored)
+            Class<?>[] generatedCommands = classCache.getClassesByName(n -> n.endsWith(COMMAND_CLASS_SUFFIX), ClassCache.isNonAbstract(), this::includePackage)
                 .toArray(Class[]::new);
             Class<?>[] originalCommands = Arrays.stream(generatedCommands)
                 .map(this::findAnnotatedClass)
@@ -170,7 +176,7 @@ class PluginInitializer {
         }
 
         private void initServices() {
-            var serviceClasses = classCache.getChildren(Service.class, ClassCache.isNonAbstract(), this::isPackageNotIgnored);
+            var serviceClasses = classCache.getChildren(Service.class, ClassCache.isNonAbstract(), this::includePackage);
             debugInit(config, log, "Found {} services: {}", serviceClasses.size(), serviceClasses);
             warnIfNotInjectable(serviceClasses, "Service");
             serviceClasses.forEach(serviceCls -> {
@@ -179,6 +185,7 @@ class PluginInitializer {
                     debugInit(config, log, "Starting service {}", serviceCls.getName());
                     service.startup(config.plugin());
                     services.add(service);
+                    registerCloseable(service);
                 } catch (Exception startupException) {
                     log.error("Failed to start service '{}' of plugin '{}'", service, config.plugin(), startupException);
                 }
@@ -186,7 +193,7 @@ class PluginInitializer {
         }
 
         private void initEventListeners() {
-            var listeners = classCache.getChildren(Listener.class, ClassCache.isNonAbstract(), this::isPackageNotIgnored);
+            var listeners = classCache.getChildren(Listener.class, ClassCache.isNonAbstract(), this::includePackage);
             debugInit(config, log, "Found {} event listeners: {}", listeners.size(), listeners);
             warnIfNotInjectable(listeners, "Event listener");
             listeners.forEach(listenerCls -> {
@@ -196,10 +203,17 @@ class PluginInitializer {
                     Bukkit.getServer()
                         .getPluginManager()
                         .registerEvents(listener, config.plugin());
+                    registerCloseable(listener);
                 } catch (Exception e) {
                     log.error("Error while processing event listener {} of plugin {}", listenerCls, config.plugin(), e);
                 }
             });
+        }
+
+        private void registerCloseable(Object bean) {
+            if (bean instanceof AutoCloseable closeable) {
+                closeables.add(closeable);
+            }
         }
 
         private <C extends Class<?>> void warnIfNotInjectable(Iterable<C> classes, String identifier) {
@@ -210,9 +224,8 @@ class PluginInitializer {
             });
         }
 
-        private <T> boolean isPackageNotIgnored(Class<? extends T> c) {
-            return config.ignorePackages()
-                .stream().noneMatch(pkg -> c.getPackageName().startsWith(pkg));
+        private <T> boolean includePackage(Class<? extends T> c) {
+            return config.packageFilter().test(c.getPackageName());
         }
     }
 }

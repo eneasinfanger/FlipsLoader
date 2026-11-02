@@ -40,6 +40,11 @@ class ClassCollector {
 
                 String className = entryName.replace('/', '.').replace(".class", "");
 
+                if (!config.packageFilter().test(className)) {
+                    LogUtil.debugCL(config, log, "Skipping class from discovery: {}", className);
+                    continue;
+                }
+
                 try {
                     Class<?> clazz = Class.forName(className, false, pluginClassLoader);
                     if (!clazz.isSynthetic() && !clazz.isAnonymousClass()) {
